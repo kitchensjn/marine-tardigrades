@@ -5,6 +5,7 @@ library(shiny)
 library(leaflet)
 library(leaflet.extras)
 library(dplyr)
+library(DT)
 
 
 # Filter data based on ID
