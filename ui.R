@@ -14,12 +14,20 @@ ui <- navbarPage("Marine Tardigrades of the World", id="nav",
                                             draggable = TRUE,  fixed = TRUE,
                                             top = 66, left = 50, right = "auto", bottom = "auto",
                                             width = 325, height = "auto",
-                                            splitLayout(cellWidths=c("75%","100%"), h3("Filters"), # Panel Title
-                                                        actionLink("clearFilters", "Clear Filters"), # Clear Filter button 
-                                                        cellArgs = list(style = "vertical-align: bottom")),
-                                            splitLayout(cellWidths="60%", 
-                                                        uiOutput("idTextMin"), uiOutput("idTextMax")), # ID Filter added to panel
-                                            uiOutput("createUI")), # Other Filters added to panel
+                                            #uiOutput("createUI")),
+                                            fluidRow(
+                                              column(width=6, h3("Filters")),
+                                              column(width=6, align="right",
+                                                     h6(),
+                                                     actionLink("clearFilters", "Clear All Filters"),
+                                                     uiOutput("selectedNumber")
+                                                     )
+                                            ),
+                                            fluidRow(align="center", 
+                                                     column(width=6, actionLink("addFilter", "Add Filter")),
+                                                     column(width=6, actionLink("removeFilter", "Remove Filter"))),
+                                            fluidRow(h6()),
+                                            tabsetPanel(id="filters")),
                               tags$div(id="cite", textOutput("citation"), align="right") # Optional file location: textOutput("fileLocation")
                               )
                    

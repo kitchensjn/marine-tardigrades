@@ -6,19 +6,22 @@ library(leaflet)
 library(leaflet.extras)
 library(dplyr)
 library(DT)
+library(rlist)
 
 
 # Filter data based on ID
-filterByIDFunction <- function(df, i){
-  if(!is.null(i[["IDmin"]]) && !is.null(i[["IDmax"]])){
-    return(df[which(df$ID>=i[["IDmin"]]&df$ID<=i[["IDmax"]]),])
+filterByIDFunction <- function(df, i, filterTab){
+  nameIDmin <- paste("IDmin",filterTab,sep="")
+  nameIDmax <- paste("IDmax",filterTab,sep="")
+  if(!is.null(i[[nameIDmin]]) && !is.null(i[[nameIDmax]])){
+    return(df[which(df$ID>=i[[nameIDmin]]&df$ID<=i[[nameIDmax]]),])
   }else{
     return(df)
   }
 }
 
 # Filter data based on other filters
-filterFunction <- function(df, i, columns){
+filterFunction2 <- function(df, i, columns){
   idFiltered.df <- filterByIDFunction(df=df, i=i)
   dataToShow.df <- data.frame() #setNames(data.frame(matrix(ncol = length(colnames(idFiltered.df)), nrow = 0)), colnames(idFiltered.df))
   for (columnName in columns) { # Loops over each filter column
@@ -34,21 +37,45 @@ filterFunction <- function(df, i, columns){
   }
 }
 
-# Setup vector of filters, OceanSea is separated to add '/'
-inputCreatorFunction <- function(x, df){
-  if (x == "OceanSea"){
-    filterColumn.input <- selectInput(inputId = x,
-                                      label = "Ocean/Sea",
-                                      choices = c(sort(unique(df[[x]]))),
-                                      multiple = TRUE) 
+filterFunction <- function(filterTab, df, i, columns, deletedFilters, pivot=""){
+  if (filterTab %in% deletedFilters){
+    return()
   }else{
-    filterColumn.input <- selectInput(inputId = x,
-                                      label = x,
-                                      choices = c(sort(unique(df[[x]]))),
-                                      multiple = TRUE) 
+    dataToShow.df <- filterByIDFunction(df=df, i=i, filterTab=filterTab)
+    if (!is.null(i[[paste(columns[[1]],filterTab,sep="")]]) && !is.na(i[[paste(columns[[1]],filterTab,sep="")]])){ # Checks that filters have loaded and exist
+      for (columnName in columns) { # Loops over each filter column
+        if (i[[paste(columnName,filterTab,sep="")]]!="-" && pivot!=columnName){
+          if (i[[paste(columnName,filterTab,sep="")]]=="NA"){
+            dataToShow.df <- dataToShow.df[which(is.na(dataToShow.df[[columnName]])),]
+          }else{
+            dataToShow.df <- dataToShow.df[which(dataToShow.df[[columnName]]==i[[paste(columnName,filterTab,sep="")]]),]
+          }
+        }
+      }
+    }
+    return(dataToShow.df)
+  }
+}
+
+inputCreatorFunction <- function(x, df, filterTab){
+  nameId <- paste(x,filterTab,sep="")
+  if (x == "OceanSea"){
+    filterColumn.input <- selectInput(inputId = nameId,
+                                      label = paste("Ocean/Sea"," (",length(unique(df[[x]])), ")", sep=""),
+                                      choices = c("-", unique(df[[x]])))
+  }else{
+    filterColumn.input <- selectInput(inputId = nameId,
+                                      label = paste(x," (",length(unique(df[[x]])), ")", sep=""),
+                                      choices = c("-", unique(df[[x]])))
+    
   }
   return(filterColumn.input)
 }
+
+removeFilter <- function(filterTab, i){
+  removeTab(inputId = "filters", target = filterTab)
+}
+
 
 # backend of the webpage
 server <- function(input, output, session) {
@@ -70,22 +97,21 @@ server <- function(input, output, session) {
       "Data compiled by Dr. Paul Bartels. Website designed by James Kitchens."
   })
   
+  valuesToUpdate <- reactiveValues(filtersInPanel=0, ignoreFilters=c())
   
   filterColumns.vec <- reactive({
     c("Family", "Genus", "Species", "OceanSea", "Country", "Depth", "Authority") # Columns to be included in filters [colnames(updated.df())]
   })
   
-  output$idTextMin <- renderUI({
-    tagList(
-      numericInput(inputId="IDmin", label="ID min", value=min(updated.df()$ID), min=min(updated.df()$ID), max=max(updated.df()$ID))
-    )
-  })
-  
-  output$idTextMax <- renderUI({
-    tagList(
-      numericInput(inputId="IDmax", label="ID max", value=max(updated.df()$ID), min=min(updated.df()$ID), max=max(updated.df()$ID))
-      
-    )
+  mapPoints.df <- reactive({
+    if (valuesToUpdate$filtersInPanel==0){
+      mainMap.df <- updated.df()
+    }else if (all(1:valuesToUpdate$filtersInPanel %in% valuesToUpdate$ignoreFilters)){
+      mainMap.df <- updated.df()
+    }else{
+      mainMap.df <- list.rbind(lapply(1:valuesToUpdate$filtersInPanel, FUN=filterFunction, df=updated.df(), i=input, columns=filterColumns.vec(), deletedFilters=valuesToUpdate$ignoreFilters)) %>% distinct() # Points in center of screen 
+    }
+    mainMap.df
   })
   
   output$createUI <- renderUI({ # Renders the filter UI, updates the available filters with spreadsheet
@@ -94,44 +120,88 @@ server <- function(input, output, session) {
     )
   })
   
+  output$selectedNumber <- renderText({
+    paste("Selected:", nrow(mapPoints.df()))
+  })
+  
+  observeEvent(input$addFilter, {
+    newTabValue <- as.character(valuesToUpdate$filtersInPanel + 1)
+    nameIDmin <- paste("IDmin",newTabValue,sep="")
+    nameIDmax <- paste("IDmax",newTabValue,sep="")
+    appendTab(inputId = "filters",
+                tabPanel(newTabValue, 
+                         fluidRow(h6("")),
+                         fluidRow(
+                           column(width=6, renderUI({
+                             tagList(
+                               numericInput(inputId=nameIDmin, label="ID min", value=min(updated.df()$ID), min=min(updated.df()$ID), max=max(updated.df()$ID))
+                             )
+                           })),
+                           column(width=6, renderUI({
+                             tagList(
+                               numericInput(inputId=nameIDmax, label="ID max", value=max(updated.df()$ID), min=min(updated.df()$ID), max=max(updated.df()$ID))
+                               
+                             )
+                           }))
+                         ),
+                         renderUI({
+                          tagList(
+                             lapply(filterColumns.vec(), FUN=inputCreatorFunction, df=updated.df(), filterTab=newTabValue) # Vector of filters
+                          )
+                         })
+                )
+    )
+    updateTabsetPanel(session, inputId = "filters", selected = newTabValue)
+    valuesToUpdate$filtersInPanel <- valuesToUpdate$filtersInPanel + 1
+  })
+  
+  observeEvent(input$removeFilter, {
+    valuesToUpdate$ignoreFilters <- unique(c(valuesToUpdate$ignoreFilters, input$filters))
+    removeFilter(i=input, filterTab=input$filters)
+  })
+  
   observe({ # Somewhat cumbersome way of updating the filters dynamically in correspondence to other filters
-    filteredData.df <- filterByIDFunction(df=updated.df(), i=input)
     for (columnName in filterColumns.vec()){
-      updateSelectInput(session = session,
-                        inputId = columnName,
-                        choices = c(sort(unique(filteredData.df[[columnName]])))) 
+      if (!is.null(input[[paste(columnName,input$filters,sep="")]]) && !is.na(input[[paste(columnName,input$filters,sep="")]])){
+        filteredData.df <- filterFunction(df=updated.df(), i=input, columns=filterColumns.vec(), filterTab=input$filters, pivot=columnName, deletedFilters=valuesToUpdate$ignoreFilters)
+        if (columnName == "OceanSea"){
+          name = "Ocean/Sea"
+        }else{
+          name = columnName
+        }
+        nameId <- paste(columnName,input$filters,sep="")
+        if (input[[paste(columnName,input$filters,sep="")]] == "-"){
+          updateSelectInput(session = session,
+                            inputId = nameId,
+                            label = paste(name," (",length(unique(filteredData.df[[columnName]])), ")", sep=""),
+                            choices = c("-", unique(filteredData.df[[columnName]])))
+        }else if (input[[paste(columnName,input$filters,sep="")]] != "NA"){ # NAs have to be treated differently
+          updateSelectInput(session = session,
+                            inputId = nameId,
+                            label = paste(name," (",length(unique(filteredData.df[[columnName]])), ")", sep=""),
+                            choices = c(input[[paste(columnName,input$filters,sep="")]], "-", unique(filteredData.df[[columnName]])[-which(unique(filteredData.df[[columnName]]==input[[paste(columnName,input$filters,sep="")]]))]))
+        }else{
+          updateSelectInput(session = session,
+                            inputId = nameId,
+                            label = paste(name," (",length(unique(filteredData.df[[columnName]])), ")", sep=""),
+                            choices = c(input[[paste(columnName,input$filters,sep="")]], "-", unique(filteredData.df[[columnName]])[-which(is.na(unique(filteredData.df[[columnName]])))]))
+        }
+      }
     }
   })
   
   observeEvent(input$clearFilters, {
-    updateNumericInput(session = session,
-                       inputId = "IDmin",
-                       value = min(updated.df()$ID))
-    updateNumericInput(session = session,
-                       inputId = "IDmax",
-                       value = max(updated.df()$ID))
-    for (columnName in filterColumns.vec()){
-      updateSelectInput(session = session,
-                        inputId = columnName,
-                        choices = c(sort(unique(updated.df()[[columnName]]))),
-                        selected = NULL)
-    }
-  })
-
-  mapPoints.df <- reactive({
-    mainMap.df <- filterFunction(df=updated.df(), i=input, columns=filterColumns.vec()) # Points in center of screen
-    leftMap.df <- mainMap.df
-    leftMap.df$Lon <- leftMap.df$Lon - 360 # Points for left of screen (appear when panning)
-    rightMap.df <- mainMap.df
-    rightMap.df$Lon <- rightMap.df$Lon + 360 # Points for right of screen (appear when panning)
-    combined.df <- rbind(leftMap.df, mainMap.df, rightMap.df) # Combine all points to be displayed
-    combined.df
+    session$reload()
+    #valuesToUpdate$ignoreFilters <- unique(c(valuesToUpdate$ignoreFilters, valuesToUpdate$filtersInPanel:0))
+    #for (tab in valuesToUpdate$filtersInPanel:0){
+    #  removeFilter(i=input, filterTab=as.character(tab))
+    #}
   })
   
   output$mymap <- renderLeaflet({ # Renders leaflet map, updates the markers on map with spreadsheet
-    leaflet(data = mapPoints.df(), options=leafletOptions(minZoom=2, worldCopyJump=TRUE)) %>% # Filters the markers based on filter UI inputs
-      addProviderTiles(providers$OpenStreetMap.Mapnik, options = providerTileOptions(noWrap = FALSE)) %>% # Background map that markers will be added on top of
-      addMarkers(~Lon, ~Lat, label=~ID, group="Tardigrades", # Adds markers to map with slight jitter because many marks have exact same lon,lat
+    leaflet(data = mapPoints.df(), options=leafletOptions(minZoom=2, worldCopyJump=FALSE)) %>% # Filters the markers based on filter UI inputs
+      addProviderTiles(providers$OpenStreetMap.Mapnik, options = providerTileOptions(noWrap=TRUE)) %>% # Background map that markers will be added on top of
+      addMarkers(~Lon, ~Lat, group="Tardigrades", # Adds markers to map
                  popup = ~paste("<div>", # Tells what to display for popups
                                   "<center><h4><b><i>", as.character(Species),"</i></b></h4></center>",
                                   "<b>", "ID:", "</b>", as.character(ID), "<br>",
@@ -153,7 +223,7 @@ server <- function(input, output, session) {
     })
   
   output$tardigrades <- DT::renderDataTable({
-    filteredData.df <- filterFunction(df=updated.df(), i=input, columns=filterColumns.vec())
+    filteredData.df <- mapPoints.df()
     toDisplay.df <- filteredData.df[,-which(names(filteredData.df) %in% c("Image", "Image Credit"))]
     DT::datatable(toDisplay.df, escape = FALSE, rownames=toDisplay.df$ID, 
                   options = list(autoWidth=FALSE, scrollX=TRUE, 
