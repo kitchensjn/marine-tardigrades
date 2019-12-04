@@ -97,22 +97,30 @@ server <- function(input, output, session) {
       "Data compiled by Dr. Paul Bartels. Website designed by James Kitchens."
   })
   
-  valuesToUpdate <- reactiveValues(filtersInPanel=0, ignoreFilters=c())
+  valuesToUpdate <- reactiveValues(mapPoints.df=data.frame(), filtersInPanel=0, ignoreFilters=c(0))
   
   filterColumns.vec <- reactive({
     c("Family", "Genus", "Species", "OceanSea", "Country", "Depth", "Authority") # Columns to be included in filters [colnames(updated.df())]
   })
-  
-  mapPoints.df <- reactive({
-    if (valuesToUpdate$filtersInPanel==0){
-      mainMap.df <- updated.df()
-    }else if (all(1:valuesToUpdate$filtersInPanel %in% valuesToUpdate$ignoreFilters)){
-      mainMap.df <- updated.df()
+
+  observeEvent(input$applyFilters, {
+    if (all(1:valuesToUpdate$filtersInPanel %in% valuesToUpdate$ignoreFilters)){
+      valuesToUpdate$mapPoints.df <- updated.df()
     }else{
-      mainMap.df <- list.rbind(lapply(1:valuesToUpdate$filtersInPanel, FUN=filterFunction, df=updated.df(), i=input, columns=filterColumns.vec(), deletedFilters=valuesToUpdate$ignoreFilters)) %>% distinct() # Points in center of screen 
+      valuesToUpdate$mapPoints.df <- list.rbind(lapply(1:valuesToUpdate$filtersInPanel, FUN=filterFunction, df=updated.df(), i=input, columns=filterColumns.vec(), deletedFilters=valuesToUpdate$ignoreFilters)) %>% distinct()
     }
-    mainMap.df
   })
+  
+  #valuesToUpdate$mapPoints.df <- reactive({
+  #  if (valuesToUpdate$filtersInPanel==0){
+  #    mainMap.df <- updated.df
+  #  }else if (all(1:valuesToUpdate$filtersInPanel %in% valuesToUpdate$ignoreFilters)){
+  #    mainMap.df <- updated.df()
+  #  }else{
+  #    mainMap.df <- list.rbind(lapply(1:valuesToUpdate$filtersInPanel, FUN=filterFunction, df=updated.df(), i=input, columns=filterColumns.vec(), deletedFilters=valuesToUpdate$ignoreFilters)) %>% distinct() # Points in center of screen 
+  #  }
+  #  mainMap.df
+  #})
   
   output$createUI <- renderUI({ # Renders the filter UI, updates the available filters with spreadsheet
     tagList(  # Can filter by various columns
@@ -120,16 +128,13 @@ server <- function(input, output, session) {
     )
   })
   
-  output$selectedNumber <- renderText({
-    paste("Selected:", nrow(mapPoints.df()))
-  })
-  
   observeEvent(input$addFilter, {
-    newTabValue <- as.character(valuesToUpdate$filtersInPanel + 1)
-    nameIDmin <- paste("IDmin",newTabValue,sep="")
-    nameIDmax <- paste("IDmax",newTabValue,sep="")
-    appendTab(inputId = "filters",
-                tabPanel(newTabValue, 
+    if (valuesToUpdate$filtersInPanel - length(valuesToUpdate$ignoreFilters) < 4){
+      newTabValue <- as.character(valuesToUpdate$filtersInPanel + 1)
+      nameIDmin <- paste("IDmin",newTabValue,sep="")
+      nameIDmax <- paste("IDmax",newTabValue,sep="")
+      appendTab(inputId = "filters",
+                tabPanel(newTabValue, style="overflow-y:scroll; overflow-x:hidden; max-height: 63vh",
                          fluidRow(h6("")),
                          fluidRow(
                            column(width=6, renderUI({
@@ -145,14 +150,26 @@ server <- function(input, output, session) {
                            }))
                          ),
                          renderUI({
-                          tagList(
+                           tagList(
                              lapply(filterColumns.vec(), FUN=inputCreatorFunction, df=updated.df(), filterTab=newTabValue) # Vector of filters
-                          )
-                         })
+                           )
+                         }),
+                         fluidRow(h1("")),
+                         fluidRow(h1("")),
+                         fluidRow(h1("")),
+                         fluidRow(h1("")),
+                         fluidRow(h1("")),
+                         fluidRow(h1("")),
+                         fluidRow(h1("")),
+                         fluidRow(h1("")),
+                         fluidRow(h1("")),
+                         fluidRow(h1("")),
+                         fluidRow(h1(""))
                 )
-    )
-    updateTabsetPanel(session, inputId = "filters", selected = newTabValue)
-    valuesToUpdate$filtersInPanel <- valuesToUpdate$filtersInPanel + 1
+      )
+      updateTabsetPanel(session, inputId = "filters", selected = newTabValue)
+      valuesToUpdate$filtersInPanel <- valuesToUpdate$filtersInPanel + 1  
+    }
   })
   
   observeEvent(input$removeFilter, {
@@ -165,9 +182,9 @@ server <- function(input, output, session) {
       if (!is.null(input[[paste(columnName,input$filters,sep="")]]) && !is.na(input[[paste(columnName,input$filters,sep="")]])){
         filteredData.df <- filterFunction(df=updated.df(), i=input, columns=filterColumns.vec(), filterTab=input$filters, pivot=columnName, deletedFilters=valuesToUpdate$ignoreFilters)
         if (columnName == "OceanSea"){
-          name = "Ocean/Sea"
+          name <- "Ocean/Sea"
         }else{
-          name = columnName
+          name <- columnName
         }
         nameId <- paste(columnName,input$filters,sep="")
         if (input[[paste(columnName,input$filters,sep="")]] == "-"){
@@ -193,13 +210,27 @@ server <- function(input, output, session) {
   observeEvent(input$clearFilters, {
     session$reload()
     #valuesToUpdate$ignoreFilters <- unique(c(valuesToUpdate$ignoreFilters, valuesToUpdate$filtersInPanel:0))
+    #print(valuesToUpdate$ignoreFilters)
     #for (tab in valuesToUpdate$filtersInPanel:0){
     #  removeFilter(i=input, filterTab=as.character(tab))
     #}
   })
   
+  finalPoints.df <- reactive({
+    if (nrow(valuesToUpdate$mapPoints.df) > 0){
+      fp.df <- valuesToUpdate$mapPoints.df
+    }else{
+      fp.df <- updated.df()
+    }
+    fp.df
+  })
+  
+  output$selectedNumber <- renderText({
+    paste("Selected:", nrow(finalPoints.df()))
+  })
+  
   output$mymap <- renderLeaflet({ # Renders leaflet map, updates the markers on map with spreadsheet
-    leaflet(data = mapPoints.df(), options=leafletOptions(minZoom=2, worldCopyJump=FALSE)) %>% # Filters the markers based on filter UI inputs
+    leaflet(data = finalPoints.df(), options=leafletOptions(minZoom=2, worldCopyJump=FALSE)) %>% # Filters the markers based on filter UI inputs
       addProviderTiles(providers$OpenStreetMap.Mapnik, options = providerTileOptions(noWrap=TRUE)) %>% # Background map that markers will be added on top of
       addMarkers(~Lon, ~Lat, group="Tardigrades", # Adds markers to map
                  popup = ~paste("<div>", # Tells what to display for popups
@@ -223,7 +254,7 @@ server <- function(input, output, session) {
     })
   
   output$tardigrades <- DT::renderDataTable({
-    filteredData.df <- mapPoints.df()
+    filteredData.df <- finalPoints.df()
     toDisplay.df <- filteredData.df[,-which(names(filteredData.df) %in% c("Image", "Image Credit"))]
     DT::datatable(toDisplay.df, escape = FALSE, rownames=toDisplay.df$ID, 
                   options = list(autoWidth=FALSE, scrollX=TRUE, 

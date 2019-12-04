@@ -12,12 +12,35 @@ div.outer {
   padding: 0;
 }
 
+div.dataExplorer {
+  padding: 60px 0px 0px 0px;
+}
+
 /* Customize fonts */
   body, label, input, button, select { 
     font-family: 'Helvetica Neue', Helvetica;
     font-weight: 200;
   }
 h1, h2, h3, h4 { font-weight: 400; }
+
+#sidebar {
+  background-color: white;
+  border-width:0px;
+  padding: 5px 0px 100px 25px;
+  right: 0px;
+}
+
+#filterWithScroll {
+  overflow-y:scroll;
+  max-height: 95vh;
+}
+
+#filterInputs {
+  background-color: white;
+  border-width:0px;
+  padding: 0px 0px 0px 0px;
+  right: 0px;
+}
 
 #controls {
 /* Appearance */
