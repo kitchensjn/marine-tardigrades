@@ -62,11 +62,11 @@ inputCreatorFunction <- function(x, df, filterTab){
   if (x == "OceanSea"){
     filterColumn.input <- selectInput(inputId = nameId,
                                       label = paste("Ocean/Sea"," (",length(unique(df[[x]])), ")", sep=""),
-                                      choices = c("-", unique(df[[x]])))
+                                      choices = c("-", sort(unique(df[[x]]))))
   }else{
     filterColumn.input <- selectInput(inputId = nameId,
                                       label = paste(x," (",length(unique(df[[x]])), ")", sep=""),
-                                      choices = c("-", unique(df[[x]])))
+                                      choices = c("-", sort(unique(df[[x]]))))
     
   }
   return(filterColumn.input)
@@ -191,17 +191,17 @@ server <- function(input, output, session) {
           updateSelectInput(session = session,
                             inputId = nameId,
                             label = paste(name," (",length(unique(filteredData.df[[columnName]])), ")", sep=""),
-                            choices = c("-", unique(filteredData.df[[columnName]])))
+                            choices = c("-", sort(unique(filteredData.df[[columnName]]))))
         }else if (input[[paste(columnName,input$filters,sep="")]] != "NA"){ # NAs have to be treated differently
           updateSelectInput(session = session,
                             inputId = nameId,
                             label = paste(name," (",length(unique(filteredData.df[[columnName]])), ")", sep=""),
-                            choices = c(input[[paste(columnName,input$filters,sep="")]], "-", unique(filteredData.df[[columnName]])[-which(unique(filteredData.df[[columnName]]==input[[paste(columnName,input$filters,sep="")]]))]))
+                            choices = c(input[[paste(columnName,input$filters,sep="")]], "-", sort(unique(filteredData.df[[columnName]])[-which(unique(filteredData.df[[columnName]]==input[[paste(columnName,input$filters,sep="")]]))])))
         }else{
           updateSelectInput(session = session,
                             inputId = nameId,
                             label = paste(name," (",length(unique(filteredData.df[[columnName]])), ")", sep=""),
-                            choices = c(input[[paste(columnName,input$filters,sep="")]], "-", unique(filteredData.df[[columnName]])[-which(is.na(unique(filteredData.df[[columnName]])))]))
+                            choices = c(input[[paste(columnName,input$filters,sep="")]], "-", sort(unique(filteredData.df[[columnName]])[-which(is.na(unique(filteredData.df[[columnName]])))])))
         }
       }
     }
