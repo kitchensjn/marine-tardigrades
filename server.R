@@ -89,14 +89,6 @@ server <- function(input, output, session) {
     tardigrade.df
   })
   
-  output$fileLocation <- renderText({
-    paste("Google Sheets File URL:", googleSheetsUrl())
-  })
-  
-  output$citation <- renderText({
-      "Data compiled by Dr. Paul Bartels. Website designed by James Kitchens."
-  })
-  
   valuesToUpdate <- reactiveValues(mapPoints.df=data.frame(), filtersInPanel=0, ignoreFilters=c(0))
   
   filterColumns.vec <- reactive({
@@ -111,17 +103,6 @@ server <- function(input, output, session) {
     }
   })
   
-  #valuesToUpdate$mapPoints.df <- reactive({
-  #  if (valuesToUpdate$filtersInPanel==0){
-  #    mainMap.df <- updated.df
-  #  }else if (all(1:valuesToUpdate$filtersInPanel %in% valuesToUpdate$ignoreFilters)){
-  #    mainMap.df <- updated.df()
-  #  }else{
-  #    mainMap.df <- list.rbind(lapply(1:valuesToUpdate$filtersInPanel, FUN=filterFunction, df=updated.df(), i=input, columns=filterColumns.vec(), deletedFilters=valuesToUpdate$ignoreFilters)) %>% distinct() # Points in center of screen 
-  #  }
-  #  mainMap.df
-  #})
-  
   output$createUI <- renderUI({ # Renders the filter UI, updates the available filters with spreadsheet
     tagList(  # Can filter by various columns
       lapply(filterColumns.vec(), FUN=inputCreatorFunction, df=updated.df()) # Vector of filters
@@ -129,12 +110,11 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$addFilter, {
-    if (valuesToUpdate$filtersInPanel - length(valuesToUpdate$ignoreFilters) < 4){
       newTabValue <- as.character(valuesToUpdate$filtersInPanel + 1)
       nameIDmin <- paste("IDmin",newTabValue,sep="")
       nameIDmax <- paste("IDmax",newTabValue,sep="")
       appendTab(inputId = "filters",
-                tabPanel(newTabValue, style="overflow-y:scroll; overflow-x:hidden; max-height: 63vh",
+                tabPanel(newTabValue, style="direction:ltr; overflow-y:auto; overflow-x:hidden; max-height: 63vh",
                          fluidRow(h6("")),
                          fluidRow(
                            column(width=6, renderUI({
@@ -169,7 +149,6 @@ server <- function(input, output, session) {
       )
       updateTabsetPanel(session, inputId = "filters", selected = newTabValue)
       valuesToUpdate$filtersInPanel <- valuesToUpdate$filtersInPanel + 1  
-    }
   })
   
   observeEvent(input$removeFilter, {
@@ -209,11 +188,6 @@ server <- function(input, output, session) {
   
   observeEvent(input$clearFilters, {
     session$reload()
-    #valuesToUpdate$ignoreFilters <- unique(c(valuesToUpdate$ignoreFilters, valuesToUpdate$filtersInPanel:0))
-    #print(valuesToUpdate$ignoreFilters)
-    #for (tab in valuesToUpdate$filtersInPanel:0){
-    #  removeFilter(i=input, filterTab=as.character(tab))
-    #}
   })
   
   finalPoints.df <- reactive({
