@@ -80,7 +80,7 @@ removeFilter <- function(filterTab, i){
 # backend of the webpage
 server <- function(input, output, session) {
   googleSheetsUrl <- reactive({
-    'https://docs.google.com/spreadsheets/d/13vViHqxkp2wqjef5DRhahf2iA0-bABFmpfQimvWeks0'
+    'https://docs.google.com/spreadsheets/d/1_IBXNwTZ5dtas54wakxMZGVwq3D7ppfnRfGj9Ms24mY'
   })
   
   updated.df <- reactive({ # Allows for data.frame to update with spreadsheet
@@ -94,7 +94,7 @@ server <- function(input, output, session) {
   filterColumns.vec <- reactive({
     c("Family", "Genus", "Species", "OceanSea", "Country", "Depth", "Authority") # Columns to be included in filters [colnames(updated.df())]
   })
-
+  
   observeEvent(input$applyFilters, {
     if (all(1:valuesToUpdate$filtersInPanel %in% valuesToUpdate$ignoreFilters)){
       valuesToUpdate$mapPoints.df <- updated.df()
@@ -109,46 +109,50 @@ server <- function(input, output, session) {
     )
   })
   
+  output$createUpdateDate <- renderText({
+    paste("This dataset was last update on:", max(updated.df()$EntryDate))
+  })
+  
   observeEvent(input$addFilter, {
-      newTabValue <- as.character(valuesToUpdate$filtersInPanel + 1)
-      nameIDmin <- paste("IDmin",newTabValue,sep="")
-      nameIDmax <- paste("IDmax",newTabValue,sep="")
-      appendTab(inputId = "filters",
-                tabPanel(newTabValue, style="direction:ltr; overflow-y:auto; overflow-x:hidden; max-height: 63vh",
-                         fluidRow(h6("")),
-                         fluidRow(
-                           column(width=6, renderUI({
-                             tagList(
-                               numericInput(inputId=nameIDmin, label="ID min", value=min(updated.df()$ID), min=min(updated.df()$ID), max=max(updated.df()$ID))
-                             )
-                           })),
-                           column(width=6, renderUI({
-                             tagList(
-                               numericInput(inputId=nameIDmax, label="ID max", value=max(updated.df()$ID), min=min(updated.df()$ID), max=max(updated.df()$ID))
-                               
-                             )
-                           }))
-                         ),
-                         renderUI({
+    newTabValue <- as.character(valuesToUpdate$filtersInPanel + 1)
+    nameIDmin <- paste("IDmin",newTabValue,sep="")
+    nameIDmax <- paste("IDmax",newTabValue,sep="")
+    appendTab(inputId = "filters",
+              tabPanel(newTabValue, style="direction:ltr; overflow-y:auto; overflow-x:hidden; max-height: 63vh",
+                       fluidRow(h6("")),
+                       fluidRow(
+                         column(width=6, renderUI({
                            tagList(
-                             lapply(filterColumns.vec(), FUN=inputCreatorFunction, df=updated.df(), filterTab=newTabValue) # Vector of filters
+                             numericInput(inputId=nameIDmin, label="ID min", value=min(updated.df()$ID), min=min(updated.df()$ID), max=max(updated.df()$ID))
                            )
-                         }),
-                         fluidRow(h1("")),
-                         fluidRow(h1("")),
-                         fluidRow(h1("")),
-                         fluidRow(h1("")),
-                         fluidRow(h1("")),
-                         fluidRow(h1("")),
-                         fluidRow(h1("")),
-                         fluidRow(h1("")),
-                         fluidRow(h1("")),
-                         fluidRow(h1("")),
-                         fluidRow(h1(""))
-                )
-      )
-      updateTabsetPanel(session, inputId = "filters", selected = newTabValue)
-      valuesToUpdate$filtersInPanel <- valuesToUpdate$filtersInPanel + 1  
+                         })),
+                         column(width=6, renderUI({
+                           tagList(
+                             numericInput(inputId=nameIDmax, label="ID max", value=max(updated.df()$ID), min=min(updated.df()$ID), max=max(updated.df()$ID))
+                             
+                           )
+                         }))
+                       ),
+                       renderUI({
+                         tagList(
+                           lapply(filterColumns.vec(), FUN=inputCreatorFunction, df=updated.df(), filterTab=newTabValue) # Vector of filters
+                         )
+                       }),
+                       fluidRow(h1("")),
+                       fluidRow(h1("")),
+                       fluidRow(h1("")),
+                       fluidRow(h1("")),
+                       fluidRow(h1("")),
+                       fluidRow(h1("")),
+                       fluidRow(h1("")),
+                       fluidRow(h1("")),
+                       fluidRow(h1("")),
+                       fluidRow(h1("")),
+                       fluidRow(h1(""))
+              )
+    )
+    updateTabsetPanel(session, inputId = "filters", selected = newTabValue)
+    valuesToUpdate$filtersInPanel <- valuesToUpdate$filtersInPanel + 1  
   })
   
   observeEvent(input$removeFilter, {
@@ -208,24 +212,24 @@ server <- function(input, output, session) {
       addProviderTiles(providers$OpenStreetMap.Mapnik, options = providerTileOptions(noWrap=TRUE)) %>% # Background map that markers will be added on top of
       addMarkers(~Lon, ~Lat, group="Tardigrades", # Adds markers to map
                  popup = ~paste("<div>", # Tells what to display for popups
-                                  "<center><h4><b><i>", as.character(Species),"</i></b></h4></center>",
-                                  "<b>", "ID:", "</b>", as.character(ID), "<br>",
-                                  "<b>", "Family:", "</b>", as.character(Family), "<br>",
-                                  "<b>", "Subfamily:", "</b>", as.character(Subfamily), "<br>",
-                                  "<b>", "Longitude:", "</b>", as.character(Lon), "<br>",
-                                  "<b>", "Latitude:", "</b>", as.character(Lat), "<br>",
-                                  "<b>", "Ocean/Sea:", "</b>", as.character(OceanSea), "<br>",
-                                  "<b>", "Country:", "</b>", as.character(Country), "<br>",
-                                  "<b>", "Region:", "</b>", as.character(Region), "<br>",
-                                  "<b>", "Sample:", "</b>", as.character(Sample), "<br>",
-                                  "<b>", "Depth:", "</b>", as.character(Depth), "<br>",
-                                  "<b>", "Authority:", "</b>", as.character(Authority), "<br><br>",
-                                  "<center>", "<img src =", as.character(Image), "height='150', width='100'>", "</center>",
-                                  "<center><font size='1'>", as.character(ImageCredit), "</font></center><br>",
+                                "<center><h4><b><i>", as.character(Species),"</i></b></h4></center>",
+                                "<b>", "ID:", "</b>", as.character(ID), "<br>",
+                                "<b>", "Family:", "</b>", as.character(Family), "<br>",
+                                "<b>", "Subfamily:", "</b>", as.character(Subfamily), "<br>",
+                                "<b>", "Longitude:", "</b>", as.character(Lon), "<br>",
+                                "<b>", "Latitude:", "</b>", as.character(Lat), "<br>",
+                                "<b>", "Ocean/Sea:", "</b>", as.character(OceanSea), "<br>",
+                                "<b>", "Country:", "</b>", as.character(Country), "<br>",
+                                "<b>", "Region:", "</b>", as.character(Region), "<br>",
+                                "<b>", "Sample:", "</b>", as.character(Sample), "<br>",
+                                "<b>", "Depth:", "</b>", as.character(Depth), "<br>",
+                                "<b>", "Authority:", "</b>", as.character(Authority), "<br><br>",
+                                "<center>", "<img src =", as.character(Image), "height='150', width='100'>", "</center>",
+                                "<center><font size='1'>", as.character(ImageCredit), "</font></center><br>",
                                 "</div>"),
                  clusterOptions = markerClusterOptions(), # Clusters the markers when zoomed out so that not displaying all points at once
                  popupOptions = popupOptions(minWidth = 300, maxWidth = 300)) #%>% # Makes sure that the popups are consistent size
-    })
+  })
   
   output$tardigrades <- DT::renderDataTable({
     filteredData.df <- finalPoints.df()
