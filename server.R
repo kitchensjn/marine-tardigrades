@@ -228,7 +228,9 @@ server <- function(input, output, session) {
                                 "<center><font size='1'>", as.character(ImageCredit), "</font></center><br>",
                                 "</div>"),
                  clusterOptions = markerClusterOptions(), # Clusters the markers when zoomed out so that not displaying all points at once
-                 popupOptions = popupOptions(minWidth = 300, maxWidth = 300)) #%>% # Makes sure that the popups are consistent size
+                 popupOptions = popupOptions(minWidth = 300, maxWidth = 300)) %>% # Makes sure that the popups are consistent size
+      addScaleBar(position="bottomright") %>%
+      addMiniMap(tiles = providers$OpenStreetMap.Mapnik,position = 'topright', width = 200, height = 200, toggleDisplay = FALSE)
   })
   
   output$tardigrades <- DT::renderDataTable({

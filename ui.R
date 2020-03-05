@@ -35,7 +35,7 @@ ui <- navbarPage("Marine Tardigrades of the World", id="nav", position="fixed-to
                                              )
                                 ),
                                 mainPanel(width=9,
-                                          leafletOutput("mymap", height="100vh")
+                                          leafletOutput("mymap", height="95vh")
                                 )
                               )
                           )
