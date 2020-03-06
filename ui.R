@@ -74,7 +74,7 @@ ui <- navbarPage("Marine Tardigrades of the World", id="nav", position="fixed-to
                                        uiOutput("createUpdateDate")
                               ),
                               fluidRow(h1()),
-                              fluidRow(id="logo", align="center",img(src='logo.png'))
+                              fluidRow(id="logo", align="center",img(src='logo.png', height="25%", width="25%"))
                               )
                               )
                  )
