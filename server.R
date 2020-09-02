@@ -110,7 +110,8 @@ server <- function(input, output, session) {
   })
   
   output$createUpdateDate <- renderText({
-    paste("This dataset was last update on:", max(updated.df()$EntryDate))
+    recent <- max(as.Date(updated.df()$EntryDate), na.rm=TRUE)
+    paste("This dataset was last update on:", substring(recent, 3))
   })
   
   observeEvent(input$addFilter, {
