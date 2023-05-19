@@ -80,7 +80,7 @@ removeFilter <- function(filterTab, i){
 # backend of the webpage
 server <- function(input, output, session) {
   googleSheetsUrl <- reactive({
-    'https://docs.google.com/spreadsheets/d/1_IBXNwTZ5dtas54wakxMZGVwq3D7ppfnRfGj9Ms24mY'
+    'https://docs.google.com/spreadsheets/d/1z4qV7CPbDMMQtwwMBruocak4G7aQ01Gw_3Slv80-uKw'
   })
   
   updated.df <- reactive({ # Allows for data.frame to update with spreadsheet
@@ -110,7 +110,7 @@ server <- function(input, output, session) {
   })
   
   output$createUpdateDate <- renderText({
-    recent <- max(as.Date(updated.df()$EntryDate), na.rm=TRUE)
+    recent <- max(as.Date(updated.df()$EntryDate, "%m/%d/%y"), na.rm=TRUE)
     paste("This dataset was last updated on:", recent)
   })
   
@@ -167,7 +167,9 @@ server <- function(input, output, session) {
         filteredData.df <- filterFunction(df=updated.df(), i=input, columns=filterColumns.vec(), filterTab=input$filters, pivot=columnName, deletedFilters=valuesToUpdate$ignoreFilters)
         if (columnName == "OceanSea"){
           name <- "Ocean/Sea"
-        }else{
+        } else if (columnName == "Depth") {
+          name <- "Depth (m bsl)"
+        } else{
           name <- columnName
         }
         nameId <- paste(columnName,input$filters,sep="")
@@ -223,7 +225,7 @@ server <- function(input, output, session) {
                                 "<b>", "Country:", "</b>", as.character(Country), "<br>",
                                 "<b>", "Region:", "</b>", as.character(Region), "<br>",
                                 "<b>", "Sample:", "</b>", as.character(Sample), "<br>",
-                                "<b>", "Depth:", "</b>", as.character(Depth), "<br>",
+                                "<b>", "Depth:", "</b>", as.character(Depth), "m bsl<br>",
                                 "<b>", "Authority:", "</b>", as.character(Authority), "<br><br>",
                                 "<center>", "<img src =", as.character(Image), "height='150', width='100'>", "</center>",
                                 "<center><font size='1'>", as.character(ImageCredit), "</font></center><br>",
